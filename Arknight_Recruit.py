@@ -1,4 +1,5 @@
 import random
+import time
 from itertools import combinations
 
 STAR_1 = {
@@ -78,6 +79,7 @@ STAR_4 = {
     "红豆": ("XF", "CL", "AT", "HF"),
     "清道夫": ("XF", "CL", "AT", "HF"),
     "豆苗": ("XF", "FA", "HF", "ZH"),
+    "罗比菈塔": ("FZ", "CL", "FH", "ZY"),
 }
 STAR_5 = {
     "幽灵鲨": ("JW", "CL", "QG", "SC"),
@@ -88,6 +90,7 @@ STAR_5 = {
     "断崖": ("JW", "CL", "AT", "QG"),
     "燧石": ("JW", "CL", "AT"),
     "赤冬": ("JW", "CL", "AT", "SC"),
+    "羽毛笔": ("JW", "CL", "AT"),
     "蓝毒": ("JJ", "FA", "AT"),
     "灰喉": ("JJ", "FA", "AT"),
     "送葬人": ("JJ", "FA", "QG"),
@@ -134,6 +137,7 @@ STAR_5 = {
     "凛冬": ("XF", "CL", "HF", "ZY"),
     "极境": ("XF", "CL", "HF", "ZY"),
     "贾维": ("XF", "CL", "HF", "AT"),
+    "桑葚": ("YL", "FA", "ZL"),
 }
 STAR_6 = {
     "银灰": ("JW", "CL", "AT", "ZY"),
@@ -167,9 +171,29 @@ STAR_6 = {
     "阿": ("TZ", "FA", "ZY", "AT"),
     "傀影": ("TZ", "CL", "KH", "KC", "AT"),
     "温蒂": ("TZ", "CL", "AT", "WY", "KC"),
+    "水月": ("TZ", "CL", "KC", "AT"),
     "推进之王": ("XF", "CL", "HF", "AT"),
     "风笛": ("XF", "CL", "HF", "AT"),
     "嵯峨": ("XF", "CL", "HF", "AT"),
+    "琴柳": ("XF", "CL", "HF", "ZY"),
+}
+
+STAR_6_NEW_YEAR_LIMITED = {
+    "年": ("ZZ", "CL", "FH", "ZY"),
+    "夕": ("SS", "FA", "QG", "AT", "KC"),
+    "令": ("FZ", "FA", "ZH", "ZY", "KC"),
+    "重岳": ("JW", "CL", "BF"),
+    "黍": ("ZZ", "CL", "FH", "ZL", "ZY"),
+    "余": (""),
+}
+STAR_6_ANNIVERSARY_LIMITED = {
+    "赫拉格": ("JW", "CL", "AT", "SC"),
+}
+STAR_6_SUMMER_LIMITED = {
+    "赫拉格": ("JW", "CL", "AT", "SC"),
+}
+STAR_6_HALF_ANNIVERSARY_LIMITED = {
+    "赫拉格": ("JW", "CL", "AT", "SC"),
 }
 
 FIXED_STAR_TAG = ("6S", "5S", "2S", "1S")
@@ -179,14 +203,14 @@ TRANSLATOR = {
     "5S": "资深干员",
     "2S": "新手",
     "1S": "支援机械",
-    "XF": "先锋",
-    "JW": "近卫",
-    "ZZ": "重装",
-    "JJ": "狙击",
-    "SS": "术师",
-    "YL": "医疗",
-    "FZ": "辅助",
-    "TZ": "特种",
+    "XF": "先锋干员",
+    "JW": "近卫干员",
+    "ZZ": "重装干员",
+    "JJ": "狙击干员",
+    "SS": "术师干员",
+    "YL": "医疗干员",
+    "FZ": "辅助干员",
+    "TZ": "特种干员",
     "CL": "近战位",
     "FA": "远程位",
     "KC": "控场",
@@ -204,15 +228,60 @@ TRANSLATOR = {
     "WY": "位移",
     "ZH": "召唤",
     "YS": "元素",
+    "GK": "高空",
 }
 
 ALL_CHARS = (STAR_1, STAR_2, STAR_3, STAR_4, STAR_5)
 
 ALL_CHARS_WITH_6S = (STAR_1, STAR_2, STAR_3, STAR_4, STAR_5, STAR_6)
 
+CHAR_TO_STAR = {}
+for _sd, _sl in [
+    (STAR_1, 1),
+    (STAR_2, 2),
+    (STAR_3, 3),
+    (STAR_4, 4),
+    (STAR_5, 5),
+    (STAR_6, 6),
+]:
+    for _char in _sd:
+        CHAR_TO_STAR[_char] = _sl
 
-def string_process(original_str: str) -> list:
-    return original_str.upper().split(" ")
+ALL_NORMAL_TAGS = [tag for tag in TRANSLATOR if tag not in FIXED_STAR_TAG]
+SPECIAL_STAR_TAGS = ("1S", "5S", "6S")
+
+NOTE_TS = 1793484000  # 2026-11-01 06:00
+UPDATE_DURATION = 21600  # 6小时
+NOTE_CHAR = {"琴柳": 6, "桑葚": 5, "罗比菈塔": 4}
+NOTE_TIME_STR = time.strftime("%Y-%m-%d %H:%M", time.localtime(NOTE_TS)) + '-' + time.strftime("%H:%M", time.localtime(NOTE_TS + UPDATE_DURATION))
+
+
+def find_all_special_combinations() -> dict:
+    """查询所有标签中能组成特殊组合(只出1/4/5/6星)的全部组合"""
+    result = {}
+    all_tags = list(ALL_NORMAL_TAGS) + list(SPECIAL_STAR_TAGS)
+    for r in range(1, 4):
+        for combo in combinations(all_tags, r):
+            match_chars = find_match_char(list(combo))
+            if not match_chars:
+                continue
+            star_set = set()
+            has_star_3 = False
+            for char in match_chars:
+                star = CHAR_TO_STAR.get(char, 0)
+                star_set.add(star)
+                if star == 3:
+                    has_star_3 = True
+                    break
+            if has_star_3:
+                continue
+            if star_set & {4, 5, 6} or star_set == {1}:
+                result[combo] = match_chars
+    return result
+
+
+def string_process(original_str: str) -> set:
+    return list(set(original_str.upper().split(" ")))
 
 
 def cap(list1: list, list2: list) -> list:
@@ -289,15 +358,11 @@ def check_all_tags_accuracy(char_dict_list: list = ALL_CHARS_WITH_6S) -> None:
 def find_combinations_can_get_1s_4s_5s_6s(tag_list: list) -> dict:
     result = dict()
     all_match = find_all_match_char(tag_list)
-    char_to_star = {}
-    for star_dict, star_level in [(STAR_1, 1), (STAR_2, 2), (STAR_3, 3), (STAR_4, 4), (STAR_5, 5), (STAR_6, 6)]:
-        for char in star_dict:
-            char_to_star[char] = star_level
     for combination, match_chars in all_match.items():
         star_set = set()
         has_star_3 = False
         for char in match_chars:
-            star = char_to_star.get(char, 0)
+            star = CHAR_TO_STAR.get(char, 0)
             star_set.add(star)
             if star == 3:
                 has_star_3 = True
@@ -311,17 +376,71 @@ def find_combinations_can_get_1s_4s_5s_6s(tag_list: list) -> dict:
     return result
 
 
+def get_update_note():
+    if time.time() >= NOTE_TS:
+        return ""
+    ansi_colors = {6: "31", 5: "33", 4: "35", 3: "34", 2: "32", 1: "90"}
+    note_char_list = list(NOTE_CHAR)
+    for i, char in enumerate(note_char_list):
+        star = NOTE_CHAR[char]
+        note_char_list[i] = f"\033[{ansi_colors[star]}m{char}\033[0m"
+    return f"\n注：干员 {' ,  '.join(note_char_list)} 将在 {NOTE_TIME_STR} 更新后加入公开招募，目前不可招募！"
+
+
 def main() -> None:
+    ansi_colors = {6: "31", 5: "33", 4: "35", 3: "34", 2: "32", 1: "90"}
+
+    def color_chars(chars):
+        return ", ".join(
+            f"\033[{ansi_colors.get(CHAR_TO_STAR.get(c, 0), '0')}m{c}\033[0m"
+            for c in chars
+        )
+
+    def print_special_combos(combos_dict, title):
+        print(f"\n{title}:")
+        if combos_dict:
+            for combo, chars in combos_dict.items():
+                tag_str = " + ".join(f"{t}({TRANSLATOR.get(t, t)})" for t in combo)
+                print(f"  {tag_str} \u2192 {color_chars(chars)}")
+        else:
+            print("  无")
+
     while True:
-        text = input("输入标签缩写->")
+        text = input("输入标签缩写（输入exit退出，输入all查询全局特殊组合）->")
         if text.lower() == "exit":
             break
+        if text.lower() == "all":
+            print("\n正在查询全局特殊组合，请稍候...")
+            all_special = find_all_special_combinations()
+            print_special_combos(all_special, "全局特殊组合列表")
+            note = get_update_note()
+            if note:
+                print(note)
+            print()
+            continue
         tag_list = string_process(text) if len(text) > 0 else []
-        for tag in tag_list:
-            print(TRANSLATOR[tag], end=" ")
-        check_all_tags_accuracy()
-        print(find_combinations_can_get_1s_4s_5s_6s(tag_list))
-        ...
+        if not tag_list:
+            continue
+        print(
+            "标签翻译:",
+            "  ".join(f"{tag}:{TRANSLATOR.get(tag, '?')}" for tag in tag_list),
+        )
+
+        all_match = find_all_match_char(tag_list)
+        print("\n所有匹配组合:")
+        if all_match:
+            for combo, chars in all_match.items():
+                tag_str = " + ".join(f"{t}({TRANSLATOR.get(t, t)})" for t in combo)
+                print(f"  {tag_str} \u2192 {color_chars(chars)}")
+        else:
+            print("  无")
+
+        special = find_combinations_can_get_1s_4s_5s_6s(tag_list)
+        print_special_combos(special, "可出1/4/5/6星组合")
+        note = get_update_note()
+        if note:
+            print(note)
+        print()
 
 
 def gui() -> None:
@@ -332,16 +451,11 @@ def gui() -> None:
     root.title("明日方舟公招缩写速查")
     root.geometry("900x700")
 
-    char_to_star = {}
-    for star_dict, star_level in [(STAR_1, 1), (STAR_2, 2), (STAR_3, 3), (STAR_4, 4), (STAR_5, 5), (STAR_6, 6)]:
-        for char in star_dict:
-            char_to_star[char] = star_level
-
     star_colors = {6: "red", 5: "orange", 4: "purple", 3: "blue", 2: "green", 1: "gray"}
 
     def insert_with_color(text_widget, chars):
         for i, char in enumerate(chars):
-            star = char_to_star.get(char, 0)
+            star = CHAR_TO_STAR.get(char, 0)
             tag = f"c{star}"
             text_widget.insert(tk.END, char, tag)
             if i < len(chars) - 1:
@@ -355,6 +469,8 @@ def gui() -> None:
     entry.pack(side=tk.LEFT, padx=5)
 
     def search():
+        all_text.config(state="normal")
+        special_text.config(state="normal")
         tag_label.config(text="")
         all_text.delete(1.0, tk.END)
         special_text.delete(1.0, tk.END)
@@ -366,7 +482,9 @@ def gui() -> None:
         if not tag_list:
             return
 
-        translations = "  ".join(f"{tag}:{TRANSLATOR.get(tag, '?')}" for tag in tag_list)
+        translations = "  ".join(
+            f"{tag}:{TRANSLATOR.get(tag, '?')}" for tag in tag_list
+        )
         tag_label.config(text=translations)
 
         all_match = find_all_match_char(tag_list)
@@ -390,9 +508,72 @@ def gui() -> None:
                 special_text.insert(tk.END, "\n")
         else:
             special_text.insert(tk.END, "无\n")
+        if time.time() < NOTE_TS:
+            note = "注：干员 "
+            all_text.insert(tk.END, f"\n{note}")
+            for char in NOTE_CHAR:
+                star = NOTE_CHAR[char]
+                all_text.insert(tk.END, char, f"c{star}")
+                if char != list(NOTE_CHAR.keys())[-1]:
+                    all_text.insert(tk.END, " ,  ")
+            all_text.insert(
+                tk.END, f" 将在 {NOTE_TIME_STR} 更新后加入公开招募，目前不可招募！"
+            )
+            special_text.insert(tk.END, f"\n{note}")
+            for char in NOTE_CHAR:
+                star = NOTE_CHAR[char]
+                special_text.insert(tk.END, char, f"c{star}")
+                if char != list(NOTE_CHAR.keys())[-1]:
+                    special_text.insert(tk.END, " ,  ")
+            special_text.insert(
+                tk.END, f" 将在 {NOTE_TIME_STR} 更新后加入公开招募，目前不可招募！"
+            )
+        all_text.config(state="disabled")
+        special_text.config(state="disabled")
+
+    def search_all():
+        top = tk.Toplevel(root)
+        top.title("全局特殊组合列表")
+        top.geometry("800x600")
+        text_area = scrolledtext.ScrolledText(top, wrap=tk.WORD)
+        for star, color in star_colors.items():
+            text_area.tag_config(f"c{star}", foreground=color)
+        text_area.pack(fill=tk.BOTH, expand=True)
+        text_area.insert(tk.END, "正在查询全局特殊组合，请稍候...\n")
+        text_area.config(state="disabled")
+        top.update()
+
+        def do_search():
+            text_area.config(state="normal")
+            text_area.delete(1.0, tk.END)
+            all_special = find_all_special_combinations()
+            if time.time() < NOTE_TS:
+                text_area.insert(tk.END, "注：干员 ")
+                for char in NOTE_CHAR:
+                    star = NOTE_CHAR[char]
+                    text_area.insert(tk.END, char, f"c{star}")
+                    if char != list(NOTE_CHAR.keys())[-1]:
+                        text_area.insert(tk.END, " ,  ")
+                text_area.insert(
+                    tk.END,
+                    f" 将在 {NOTE_TIME_STR} 更新后加入公开招募，目前不可招募！\n\n",
+                )
+            if all_special:
+                for combo, chars in all_special.items():
+                    tag_str = " + ".join(f"{t}({TRANSLATOR.get(t, t)})" for t in combo)
+                    text_area.insert(tk.END, f"{tag_str} \u2192 ")
+                    insert_with_color(text_area, chars)
+                    text_area.insert(tk.END, "\n")
+            else:
+                text_area.insert(tk.END, "无\n")
+            text_area.config(state="disabled")
+
+        top.after(100, do_search)
 
     btn = tk.Button(input_frame, text="查询", command=search, width=8)
     btn.pack(side=tk.LEFT)
+    btn_all = tk.Button(input_frame, text="全局特殊组合", command=search_all, width=12)
+    btn_all.pack(side=tk.LEFT, padx=5)
 
     entry.bind("<Return>", lambda e: search())
 
@@ -405,6 +586,7 @@ def gui() -> None:
     for star, color in star_colors.items():
         all_text.tag_config(f"c{star}", foreground=color)
     all_text.pack(fill=tk.BOTH, expand=True)
+    all_text.config(state="disabled")
 
     special_frame = tk.LabelFrame(root, text="可出1/4/5/6星组合（无3星）")
     special_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
@@ -412,9 +594,18 @@ def gui() -> None:
     for star, color in star_colors.items():
         special_text.tag_config(f"c{star}", foreground=color)
     special_text.pack(fill=tk.BOTH, expand=True)
+    special_text.config(state="disabled")
 
     root.mainloop()
 
 
 if __name__ == "__main__":
-    gui()
+    mode = input("选择模式: 1.命令行模式  其他.GUI模式 (输入): ")
+    if mode == "1":
+        main()
+    else:
+        try:
+            gui()
+        except Exception:
+            print("GUI模式不可用，切换到命令行模式。")
+            main()
